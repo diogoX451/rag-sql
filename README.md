@@ -211,10 +211,6 @@ The codebase follows clean architecture principles:
 3. **Memory Issues**: Increase available memory for large schemas
 4. **LLM Timeout**: Adjust timeout settings for complex queries
 
-## License
-
-[Add your license information here]
-
 ## Support
 
-For questions and support, please [open an issue](link-to-issues) or contact the development team.
+For questions and support, please [open an issue] or contact the development team.
