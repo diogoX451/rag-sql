@@ -1,6 +1,3 @@
-SELECT s."state_id", MAX(s."points") as max_score 
-
-
 # rag-sql
 
 Project focused on understanding the database to create RAG (Retrieval-Augmented Generation) for LLMs response to generate accurate SQL queries.
