@@ -213,4 +213,4 @@ The codebase follows clean architecture principles:
 
 ## Support
 
-For questions and support, please [open an issue] or contact the development team.
+For questions and support, please [open an issue] or contact the development team Email: diogosgn@gmail.com.

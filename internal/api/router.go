@@ -23,8 +23,8 @@ func NewRouter(schemaService *dbschema.Service, builder *contextbuilder.Builder,
 	mux := http.NewServeMux()
 	deps := &RouterDeps{schemaService, builder, executor, llmClient}
 
-	mux.HandleFunc("/ask", deps.handleAsk)
-	mux.HandleFunc("/schema", deps.handleSchema)
+	mux.HandleFunc("/api/ask", deps.handleAsk)
+	mux.HandleFunc("/api/schema", deps.handleSchema)
 
 	return mux
 }
