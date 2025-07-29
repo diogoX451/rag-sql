@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
+	"strings"
 )
 
 type Client struct {
@@ -71,10 +73,11 @@ func WithModel(model string) Option {
 func (c *Client) Generate(ctx context.Context, prompt string, opts ...Option) (string, error) {
 	url := fmt.Sprintf("%s/api/generate", c.Host)
 
+	println("Enviando prompt para LLM:", url)
+
 	reqBody, _ := json.Marshal(generateRequest{
 		Model:  c.Model,
 		Prompt: prompt,
-		System: "Você é um assistente especialista em auxiliar nas perguntas sobre contexto de banco de dados.",
 		Stream: false,
 	})
 
@@ -89,9 +92,12 @@ func (c *Client) Generate(ctx context.Context, prompt string, opts ...Option) (s
 	if err != nil {
 		return "", fmt.Errorf("erro ao chamar LLM: %w", err)
 	}
-	defer resp.Body.Close()
 
+	println("Status da resposta:", resp.StatusCode)
+	println("Headers da resposta:", resp.Header.Values("Content-Type"))
 	body, _ := io.ReadAll(resp.Body)
+	println("Corpo da resposta:", string(body))
+	defer resp.Body.Close()
 
 	var res generateResponse
 	if err := json.Unmarshal(body, &res); err != nil {
@@ -99,4 +105,59 @@ func (c *Client) Generate(ctx context.Context, prompt string, opts ...Option) (s
 	}
 
 	return res.Response, nil
+}
+
+func (c *Client) InferRelationship(ctx context.Context, fromEntity, toEntity string) (string, error) {
+	prompt := fmt.Sprintf(`
+		Aja como um Arquiteto de Dados especialista em modelagem de grafos para Neo4j.
+		Sua tarefa é definir um tipo de relação semântica entre duas entidades de um banco de dados.
+		A relação deve ser um verbo ou uma frase verbal curta em maiúsculas, usando o padrão SNAKE_CASE.
+		Analise a ação que a entidade de origem ('%s') exerce sobre a entidade de destino ('%s').
+
+		Exemplos Estratégicos:
+		1. Origem: 'checklists', Destino: 'farms' -> <relationship>AVALIOU</relationship>
+		2. Origem: 'users', Destino: 'addresses' -> <relationship>RESIDE_EM</relationship>
+		3. Origem: 'orders', Destino: 'customers' -> <relationship>FEITO_POR</relationship>
+		4. Origem: 'order_items', Destino: 'orders' -> <relationship>PERTENCE_A</relationship>
+		5. Origem: 'employees', Destino: 'departments' -> <relationship>TRABALHA_EM</relationship>
+		6. Origem: 'farm_files', Destino: 'farms' -> <relationship>ANEXADO_A</relationship>
+
+		Agora, analise o seguinte caso:
+		Entidade de Origem: '%s'
+		Entidade de Destino: '%s'
+
+		Forneça sua resposta final, e APENAS a resposta, dentro de tags XML <relationship></relationship>. Não adicione nenhuma outra explicação ou texto.
+`, fromEntity, toEntity, fromEntity, toEntity)
+
+	responseText, err := c.Generate(ctx, prompt)
+	if err != nil {
+		return "", err
+	}
+
+	println("Resposta da LLM:", responseText)
+
+	return parseXMLRelationship(responseText)
+}
+
+func parseXMLRelationship(xmlString string) (string, error) {
+	r := regexp.MustCompile(`<relationship>(.*?)<\/relationship>`)
+	matches := r.FindStringSubmatch(xmlString)
+
+	if len(matches) < 2 {
+
+		cleanedFallback := strings.TrimSpace(xmlString)
+		cleanedFallback = strings.ToUpper(cleanedFallback)
+		reg := regexp.MustCompile("[^A-Z_]")
+		cleanedFallback = reg.ReplaceAllString(cleanedFallback, "")
+		if cleanedFallback == "" {
+			return "REFERENCES", fmt.Errorf("a resposta da LLM não continha a tag <relationship> e estava vazia: %s", xmlString)
+		}
+		return cleanedFallback, nil
+	}
+
+	relationship := strings.TrimSpace(matches[1])
+	if relationship == "" {
+		return "REFERENCES", fmt.Errorf("a tag <relationship> estava vazia na resposta da LLM")
+	}
+	return relationship, nil
 }

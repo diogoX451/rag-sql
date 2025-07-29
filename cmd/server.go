@@ -51,7 +51,9 @@ func main() {
 
 	schemaGraph := schemautil.BuildSchemaGraph(schemaStr)
 
-	err = neoGraph.LoadSchemaGraph(context.Background(), schemaGraph)
+	clientLlm := llm.New("llama3.1:8b", "http://localhost:11434")
+
+	err = neoGraph.LoadSchemaGraph(context.Background(), schemaGraph, clientLlm)
 	if err != nil {
 		log.Fatalf("Erro ao carregar schema no grafo: %v", err)
 	}
